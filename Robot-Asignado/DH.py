@@ -3,30 +3,25 @@
 Manipulador ARTICULADO de 4 GDL (todo revolucion):
   J1 giro de base | J2 hombro | J3 codo | J4 muñeca (cabeceo)
 Convencion DH MODIFICADA (Craig).
-Incluye: cinematica directa, dibujo con ejes, poses multiples y nube de puntos.
+Incluye: cinematica directa, dibujo con ejes, poses multiples, nube de puntos,
+         guardar imagen de las poses y GIF animado.
 Colores de los ejes (como tus laminas): Z = rojo, X = verde, Y = azul.
-
-Autor: (tu nombre)
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 
 
 # ============================================================
 #   1) CONFIGURACION   <-- EDITA AQUI
 # ============================================================
-# Dimensiones [m] (la foto no traia cotas; pon las de tu robot)
 H  = 0.20   # base -> hombro
 A2 = 0.30   # brazo     (hombro -> codo)
 A3 = 0.25   # antebrazo (codo -> muñeca)
 AT = 0.10   # muñeca -> punta del gripper (herramienta)
 
-# Tabla DH MODIFICADA: [alpha_{i-1}, a_{i-1}, theta_i, d_i]
-#   4 juntas de revolucion (theta variable). La ultima fila es la
-#   herramienta: transformacion FIJA (no es junta).
-#   J1 vertical y J2,J3,J4 paralelas -> por eso alpha1=90 y el resto 0.
 def _tabla(q):
     t1, t2, t3, t4 = q
     return [
@@ -37,7 +32,6 @@ def _tabla(q):
         (0.0,      AT,  0., 0.),   # {4}->tool herramienta (fija)
     ]
 
-# Limites articulares [min, max] en RADIANES (para la nube de puntos)
 LIMITES = [
     (np.deg2rad(-180), np.deg2rad(180)),   # J1
     (np.deg2rad(-90),  np.deg2rad(90)),    # J2
@@ -45,10 +39,11 @@ LIMITES = [
     (np.deg2rad(-120), np.deg2rad(120)),   # J4
 ]
 
-# Poses a mostrar [theta1, theta2, theta3, theta4] (aqui en grados)
+# Poses ("pasos") a mostrar [theta1, theta2, theta3, theta4] (en grados)
 Q_POSE   = np.deg2rad([  0, 120, -110, -40])   # parecida a la foto
 Q_POSE_2 = np.deg2rad([ 45,  90,  -60, -20])
 Q_POSE_3 = np.deg2rad([-40,  60,  -95,  30])
+Q_POSE_4 = np.deg2rad([-15, 100,  -80, -25])
 
 
 # ============================================================
@@ -67,11 +62,6 @@ def dh_matrix(alpha, a, theta, d):
 #   3) CINEMATICA DIRECTA
 # ============================================================
 def cinematica_directa(q):
-    """
-    puntos : (6,3) origenes de {0},{1},{2},{3},{4} y la punta de la herramienta.
-    frames : lista de 6 matrices 4x4.
-    El efector final es puntos[-1] (punta del gripper).
-    """
     T = np.eye(4)
     puntos = [T[:3, 3].copy()]
     frames = [T.copy()]
@@ -93,7 +83,7 @@ def nube_de_puntos(limites=LIMITES, n_muestras=8000, semilla=0):
     nube = np.empty((n_muestras, 3))
     for k in range(n_muestras):
         pts, _ = cinematica_directa(Q[k])
-        nube[k] = pts[-1]                # punta del gripper
+        nube[k] = pts[-1]
     return nube
 
 
@@ -109,7 +99,6 @@ def _iguales(ax, pts):
 
 
 def dibujar_ejes(ax, T, s):
-    """Ejes de un sistema: Z rojo, X verde, Y azul (como tus laminas)."""
     o = T[:3, 3]
     ax.quiver(*o, *T[:3, 2], length=s, color='r', linewidth=2.2)   # Z
     ax.quiver(*o, *T[:3, 0], length=s, color='g', linewidth=2.2)   # X
@@ -128,7 +117,7 @@ def _dibujar_robot(ax, q, color='0.25', color_art='orange', color_ef='red',
         s = 0.12 * diag
         for i in range(5):
             dibujar_ejes(ax, frames[i], s)
-            if etiquetas:                       # {1} y {2} coinciden en el hombro
+            if etiquetas:
                 off = {1: (0, 0, 0.045), 2: (0.05, 0, -0.02)}.get(i, (0.03, 0, 0))
                 o = frames[i][:3, 3]
                 ax.text(o[0]+off[0], o[1]+off[1], o[2]+off[2], "{%d}" % i,
@@ -137,14 +126,13 @@ def _dibujar_robot(ax, q, color='0.25', color_art='orange', color_ef='red',
         ef = pts[-1]
         ax.scatter(*ef, color=color_ef, marker='*', s=190, edgecolors='k',
                    depthshade=False, zorder=6)
-        if aprox:                               # vector de aproximacion (Z del efector)
+        if aprox:
             ax.quiver(*ef, *frames[-1][:3, 2], length=0.18*diag,
                       color=color_ef, linewidth=2)
     return pts
 
 
 def plot_ejes(q=Q_POSE):
-    """Asignacion de sistemas de referencia {0}..{4} (Paso 2)."""
     fig = plt.figure(figsize=(8, 7)); ax = fig.add_subplot(111, projection='3d')
     pts = _dibujar_robot(ax, q, ejes=True, etiquetas=True, aprox=False)
     ax.scatter(*pts[0], color='k', s=80)
@@ -155,7 +143,6 @@ def plot_ejes(q=Q_POSE):
 
 
 def plot_robot(q, ejes=False, aprox=True):
-    """Una sola pose (con o sin ejes)."""
     fig = plt.figure(figsize=(8, 7)); ax = fig.add_subplot(111, projection='3d')
     pts = _dibujar_robot(ax, q, ejes=ejes, etiquetas=ejes, aprox=aprox)
     ax.scatter(*pts[0], color='k', s=80)
@@ -166,7 +153,6 @@ def plot_robot(q, ejes=False, aprox=True):
 
 
 def plot_robots(poses, nombres=None):
-    """Varias poses en la MISMA grafica; el efector de cada una como estrella."""
     fig = plt.figure(figsize=(8, 7)); ax = fig.add_subplot(111, projection='3d')
     cols = plt.cm.tab10.colors; todos = []
     for i, q in enumerate(poses):
@@ -186,7 +172,6 @@ def plot_robots(poses, nombres=None):
 
 
 def plot_nube(nube, q_pose=None):
-    """Nube de puntos del espacio de trabajo (punta del gripper)."""
     fig = plt.figure(figsize=(7, 6)); ax = fig.add_subplot(111, projection='3d')
     ax.scatter(nube[:, 0], nube[:, 1], nube[:, 2], s=2, alpha=0.25,
                c=nube[:, 2], cmap='viridis')
@@ -201,16 +186,79 @@ def plot_nube(nube, q_pose=None):
 
 
 # ============================================================
+#   5b) GUARDAR IMAGEN Y GIF
+# ============================================================
+def guardar_imagen(poses, ruta='robot4_pasos.png', dpi=150, nombres=None):
+    """Guarda en un PNG las poses superpuestas (los 'pasos' del robot)."""
+    fig = plot_robots(poses, nombres=nombres)
+    fig.savefig(ruta, dpi=dpi, bbox_inches='tight')
+    plt.close(fig)
+    print("Imagen guardada:", ruta)
+    return ruta
+
+
+def _trayectoria(poses, pasos=14, pausa=5, cerrar=True):
+    """Interpola entre poses consecutivas (con una pausa en cada una)."""
+    seq = [np.array(p, float) for p in poses]
+    if cerrar:
+        seq = seq + [seq[0]]          # vuelve a la primera -> GIF en bucle
+    qs = []
+    for a, b in zip(seq[:-1], seq[1:]):
+        qs += [a] * pausa
+        for t in np.linspace(0, 1, pasos, endpoint=False):
+            qs.append(a + (b - a) * t)
+    qs += [seq[-1]] * pausa
+    return qs
+
+
+def crear_gif(poses, ruta='robot4.gif', pasos=14, pausa=5,
+              fps=20, dpi=90, girar=False):
+    """
+    GIF del robot moviendose por las poses (pasos).
+      pasos : cuadros de transicion entre poses consecutivas
+      pausa : cuadros quieto en cada pose
+      girar : si True, la camara gira lentamente
+    """
+    qs = _trayectoria(poses, pasos, pausa)
+    allp = np.vstack([cinematica_directa(q)[0] for q in qs])
+    c = allp.mean(0); r = (allp.max(0) - allp.min(0)).max() / 2 or 1.0
+
+    fig = plt.figure(figsize=(8, 7)); ax = fig.add_subplot(111, projection='3d')
+
+    def update(k):
+        ax.cla()
+        _dibujar_robot(ax, qs[k], color='tab:blue', color_art='tab:blue',
+                       color_ef='red', ejes=False, efector=True)
+        ax.scatter(0, 0, 0, color='k', s=70)
+        ax.set_xlim(c[0]-r, c[0]+r); ax.set_ylim(c[1]-r, c[1]+r); ax.set_zlim(c[2]-r, c[2]+r)
+        try: ax.set_box_aspect([1, 1, 1])
+        except Exception: pass
+        azim = -70 + (360 * k / len(qs) if girar else 0)
+        ax.view_init(elev=15, azim=azim)
+        ax.set_title('Manipulador 4 GDL - movimiento por poses')
+        ax.set_xlabel('X [m]'); ax.set_ylabel('Y [m]'); ax.set_zlabel('Z [m]')
+
+    anim = animation.FuncAnimation(fig, update, frames=len(qs), interval=1000/fps)
+    anim.save(ruta, writer=animation.PillowWriter(fps=fps), dpi=dpi)
+    plt.close(fig)
+    print("GIF guardado:", ruta, "(%d cuadros)" % len(qs))
+    return ruta
+
+
+# ============================================================
 #   6) PROGRAMA PRINCIPAL
 # ============================================================
 if __name__ == '__main__':
-    poses = [Q_POSE, Q_POSE_2, Q_POSE_3]
+    poses = [Q_POSE, Q_POSE_2, Q_POSE_3, Q_POSE_4]
     for i, q in enumerate(poses):
         pts, _ = cinematica_directa(q)
         print("Pose %d - efector (x,y,z) [m]: %s" % (i + 1, np.round(pts[-1], 4)))
 
-    plot_ejes(Q_POSE)                                        # 1) asignacion de ejes
-    plot_robots(poses)                                       # 2) varias poses juntas
-    plot_nube(nube_de_puntos(n_muestras=8000), q_pose=Q_POSE)  # 3) espacio de trabajo
+    # 1) Imagen con los 4 pasos superpuestos
+    guardar_imagen(poses, 'Robot-Asignado/robot4_pasos.png')
 
-    plt.show()
+    # 2) GIF del robot moviendose por los 4 pasos
+    crear_gif(poses, 'Robot-Asignado/robot4.gif', girar=False)
+
+    # (opcional) figuras en pantalla:
+    # plot_ejes(Q_POSE); plot_robots(poses); plot_nube(nube_de_puntos(), q_pose=Q_POSE); plt.show()
