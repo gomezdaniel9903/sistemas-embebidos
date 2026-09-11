@@ -148,7 +148,7 @@ killall -9 gzserver gzclient
 ## Resultados
 
 <!-- Reemplaza esta línea con la URL del video en Drive -->
-**Video de la demostración:** _[Pegar aquí la URL del video en Drive]_
+**Video de la demostración:** [Video drive](https://drive.google.com/file/d/1K-_NN8Z12PnPwWqScyX1goHYd2umqdVt/view?usp=sharing)
 
 Demostración en formato GIF:
 
