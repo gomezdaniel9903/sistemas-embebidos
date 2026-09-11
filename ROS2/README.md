@@ -152,7 +152,7 @@ killall -9 gzserver gzclient
 
 Demostración en formato GIF:
 
-![Demostración de Navegación Nav2](media/trayectoria_nav2.gif)
+![Demostración de Navegación Nav2](trayectoria_nav2.gif)
 
 ---
 
