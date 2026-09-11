@@ -1,0 +1,1249 @@
+#include <WiFi.h>
+#include <WebServer.h>
+#include <ESP32Servo.h>
+
+#define LED_PIN 2
+#define SERVO_PIN 18
+
+WebServer server(80);
+
+Servo miServo;
+
+int anguloServo = 90;
+
+// ======================================================
+// CREDENCIALES WIFI
+// ======================================================
+
+const char* SSID = "MOVISTAR WIFI0838";
+const char* PASSWORD = "perrito123";
+
+
+// ======================================================
+// PÁGINA HTML
+// ======================================================
+
+const char* paginaHTML = R"rawliteral(
+
+<!DOCTYPE html>
+<html>
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
+  <title>ESP32</title>
+
+
+  <style>
+
+    body {
+
+      font-family: Arial, sans-serif;
+
+      margin: 0;
+
+      background-color: #f2f2f2;
+
+    }
+
+
+    /* =========================
+       MENÚ
+       ========================= */
+
+    .menu {
+
+      background-color: #222;
+
+      padding: 15px;
+
+      text-align: center;
+
+    }
+
+
+    .menu button {
+
+      background-color: #333;
+
+      color: white;
+
+      border: none;
+
+      padding: 12px 18px;
+
+      margin: 4px;
+
+      border-radius: 6px;
+
+      cursor: pointer;
+
+    }
+
+
+    .menu button:hover {
+
+      background-color: #555;
+
+    }
+
+
+    /* =========================
+       CONTENEDOR
+       ========================= */
+
+    .contenedor {
+
+      background-color: white;
+
+      width: 80%;
+
+      max-width: 600px;
+
+      margin: 30px auto;
+
+      padding: 30px;
+
+      border-radius: 15px;
+
+      box-shadow:
+        0 0 10px rgba(0,0,0,0.2);
+
+    }
+
+
+    .seccion {
+
+      display: none;
+
+    }
+
+
+    .activa {
+
+      display: block;
+
+    }
+
+
+    h1 {
+
+      text-align: center;
+
+      color: #333;
+
+    }
+
+
+    /* =========================
+       VALORES
+       ========================= */
+
+    .valor {
+
+      font-size: 40px;
+
+      font-weight: bold;
+
+      color: #2196F3;
+
+      text-align: center;
+
+      margin: 20px;
+
+      word-wrap: break-word;
+
+    }
+
+
+    /* Nombre del WiFi */
+
+    .nombreWifi {
+
+      font-size: 25px;
+
+      color: #333;
+
+    }
+
+
+    /* Temperatura */
+
+    .temperatura {
+
+      color: #FF5722;
+
+    }
+
+
+    /* =========================
+       BARRA WIFI
+       ========================= */
+
+    .barra {
+
+      width: 100%;
+
+      height: 30px;
+
+      background-color: #ddd;
+
+      border-radius: 15px;
+
+      overflow: hidden;
+
+      margin-top: 20px;
+
+    }
+
+
+    .progreso {
+
+      height: 100%;
+
+      width: 0%;
+
+      background-color: #4CAF50;
+
+      transition: width 0.5s;
+
+    }
+
+
+    /* =========================
+       SLIDER SERVO
+       ========================= */
+
+    input[type="range"] {
+
+      width: 100%;
+
+      margin: 20px 0;
+
+    }
+
+
+    /* =========================
+       BOTONES
+       ========================= */
+
+    .boton {
+
+      background-color: #2196F3;
+
+      color: white;
+
+      border: none;
+
+      padding: 12px 20px;
+
+      border-radius: 6px;
+
+      cursor: pointer;
+
+    }
+
+
+    .boton:hover {
+
+      background-color: #1976D2;
+
+    }
+
+
+    /* =========================
+       REDES WIFI
+       ========================= */
+
+    #redes {
+
+      margin-top: 20px;
+
+    }
+
+
+    .red {
+
+      background-color: #eee;
+
+      padding: 12px;
+
+      margin: 5px 0;
+
+      border-radius: 6px;
+
+      text-align: left;
+
+    }
+
+
+    .publica {
+
+      color: #4CAF50;
+
+      font-weight: bold;
+
+    }
+
+
+    .privada {
+
+      color: #F44336;
+
+      font-weight: bold;
+
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+
+<!-- ==================================================
+     MENÚ
+     ================================================== -->
+
+<div class="menu">
+
+  <button onclick="mostrarSeccion('wifi')">
+
+    📶 Buscar Red WiFi
+
+  </button>
+
+
+  <button onclick="mostrarSeccion('info')">
+
+    📊 Red Actual Fija
+
+  </button>
+
+
+  <button onclick="mostrarSeccion('temperatura')">
+
+    🌡️ Temperatura
+
+  </button>
+
+
+  <button onclick="mostrarSeccion('servo')">
+
+    ⚙️ Manejar grados
+
+  </button>
+
+</div>
+
+
+
+<div class="contenedor">
+
+
+  <!-- ==================================================
+       BUSCAR RED WIFI
+       ================================================== -->
+
+  <div id="wifi" class="seccion activa">
+
+    <h1>Buscar Red WiFi</h1>
+
+
+    <p>
+
+      Presiona el botón para buscar
+      las redes disponibles.
+
+    </p>
+
+
+    <button
+      class="boton"
+      onclick="buscarRedes()">
+
+      Buscar redes
+
+    </button>
+
+
+    <div id="redes">
+
+      No se han buscado redes.
+
+    </div>
+
+  </div>
+
+
+
+  <!-- ==================================================
+       INFORMACIÓN WIFI
+       ================================================== -->
+
+  <div id="info" class="seccion">
+
+    <h1>Información WiFi</h1>
+
+
+    <p style="text-align:center">
+
+      Red conectada
+
+    </p>
+
+
+    <div class="valor nombreWifi">
+
+      <span id="nombreWifi">
+
+        --
+
+      </span>
+
+    </div>
+
+
+    <p>
+
+      Intensidad de señal
+
+    </p>
+
+
+    <div class="valor">
+
+      <span id="rssi">
+
+        --
+
+      </span>
+
+      dBm
+
+    </div>
+
+
+    <p>
+
+      Porcentaje de señal
+
+    </p>
+
+
+    <div class="valor">
+
+      <span id="porcentaje">
+
+        --
+
+      </span>
+
+      %
+
+    </div>
+
+
+    <div class="barra">
+
+      <div
+        class="progreso"
+        id="barra">
+
+      </div>
+
+    </div>
+
+
+    <p style="text-align:center">
+
+      Actualizando cada segundo...
+
+    </p>
+
+  </div>
+
+
+
+  <!-- ==================================================
+       TEMPERATURA
+       ================================================== -->
+
+  <div id="temperatura" class="seccion">
+
+    <h1>Temperatura ESP32</h1>
+
+
+    <p style="text-align:center">
+
+      Temperatura interna del chip
+
+    </p>
+
+
+    <div class="valor temperatura">
+
+      <span id="temperaturaValor">
+
+        --
+
+      </span>
+
+      °C
+
+    </div>
+
+
+    <p style="text-align:center">
+
+      Actualizando cada segundo...
+
+    </p>
+
+  </div>
+
+
+
+  <!-- ==================================================
+       SERVO
+       ================================================== -->
+
+  <div id="servo" class="seccion">
+
+    <h1>Manejar Servo</h1>
+
+
+    <p style="text-align:center">
+
+      Ángulo del servo
+
+    </p>
+
+
+    <div class="valor">
+
+      <span id="angulo">
+
+        90
+
+      </span>
+
+      °
+
+    </div>
+
+
+    <input
+      type="range"
+      min="0"
+      max="180"
+      value="90"
+      id="sliderServo"
+      oninput="moverServo(this.value)"
+    >
+
+
+    <p style="text-align:center">
+
+      0° &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+
+      90° &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+
+      180°
+
+    </p>
+
+  </div>
+
+
+</div>
+
+
+
+<script>
+
+
+// ======================================================
+// CAMBIAR SECCIÓN
+// ======================================================
+
+function mostrarSeccion(seccion) {
+
+  let secciones =
+    document.getElementsByClassName("seccion");
+
+
+  for (
+    let i = 0;
+    i < secciones.length;
+    i++
+  ) {
+
+    secciones[i].classList.remove("activa");
+
+  }
+
+
+  document
+    .getElementById(seccion)
+    .classList.add("activa");
+
+}
+
+
+
+// ======================================================
+// ACTUALIZAR INFORMACIÓN
+// ======================================================
+
+function actualizarDatos() {
+
+  fetch('/datos')
+
+    .then(response => response.json())
+
+    .then(data => {
+
+
+      // Nombre de la red
+
+      document.getElementById('nombreWifi')
+        .innerText =
+        data.ssid;
+
+
+      // RSSI
+
+      document.getElementById('rssi')
+        .innerText =
+        data.rssi;
+
+
+      // Porcentaje
+
+      document.getElementById('porcentaje')
+        .innerText =
+        data.porcentaje;
+
+
+      // Barra
+
+      document.getElementById('barra')
+        .style.width =
+        data.porcentaje + '%';
+
+
+      // Temperatura
+
+      document.getElementById('temperaturaValor')
+        .innerText =
+        data.temperatura;
+
+    })
+
+    .catch(error => {
+
+      console.log(
+        "Error:",
+        error
+      );
+
+    });
+
+}
+
+
+// Actualizar inmediatamente
+
+actualizarDatos();
+
+
+// Actualizar cada segundo
+
+setInterval(
+  actualizarDatos,
+  1000
+);
+
+
+
+// ======================================================
+// BUSCAR REDES WIFI
+// ======================================================
+
+function buscarRedes() {
+
+  document.getElementById('redes')
+    .innerHTML =
+    "Buscando redes...";
+
+
+  fetch('/redes')
+
+    .then(response => response.json())
+
+    .then(data => {
+
+      let html = "";
+
+
+      if (data.length == 0) {
+
+        html =
+          "No se encontraron redes.";
+
+      }
+
+
+      for (
+        let i = 0;
+        i < data.length;
+        i++
+      ) {
+
+
+        html +=
+
+          '<div class="red">' +
+
+          '<strong>📶 ' +
+
+          data[i].nombre +
+
+          '</strong><br><br>' +
+
+
+          'Señal: ' +
+
+          data[i].rssi +
+
+          ' dBm<br><br>' +
+
+
+          'Seguridad: ';
+
+
+        if (
+          data[i].abierta
+        ) {
+
+          html +=
+
+            '<span class="publica">' +
+
+            '🔓 Pública / Abierta' +
+
+            '</span>';
+
+        } else {
+
+          html +=
+
+            '<span class="privada">' +
+
+            '🔒 Privada / Con contraseña' +
+
+            '</span>';
+
+        }
+
+
+        html +=
+
+          '</div>';
+
+      }
+
+
+      document.getElementById('redes')
+        .innerHTML = html;
+
+    })
+
+    .catch(error => {
+
+      document.getElementById('redes')
+        .innerHTML =
+        "Error buscando redes.";
+
+    });
+
+}
+
+
+
+// ======================================================
+// SERVO
+// ======================================================
+
+function moverServo(angulo) {
+
+  document.getElementById('angulo')
+    .innerText =
+    angulo;
+
+
+  fetch(
+    '/servo?angulo=' +
+    angulo
+  );
+
+}
+
+
+</script>
+
+
+</body>
+
+</html>
+
+)rawliteral";
+
+
+
+// ======================================================
+// PÁGINA PRINCIPAL
+// ======================================================
+
+void handleRoot() {
+
+  server.send(
+    200,
+    "text/html",
+    paginaHTML
+  );
+
+}
+
+
+
+// ======================================================
+// DATOS WIFI + TEMPERATURA
+// ======================================================
+
+void handleDatos() {
+
+  // RSSI de la red actual
+
+  int rssi =
+    WiFi.RSSI();
+
+
+  // Porcentaje de señal
+
+  int porcentaje =
+    map(
+      rssi,
+      -90,
+      -30,
+      0,
+      100
+    );
+
+
+  porcentaje =
+    constrain(
+      porcentaje,
+      0,
+      100
+    );
+
+
+  // Nombre de la red actual
+
+  String nombreWifi =
+    WiFi.SSID();
+
+
+  // Temperatura interna del ESP32
+
+  float temperatura =
+    temperatureRead();
+
+
+  // Crear JSON
+
+  String json = "{";
+
+
+  // SSID
+
+  json += "\"ssid\":\"";
+
+  json += nombreWifi;
+
+  json += "\",";
+
+
+  // RSSI
+
+  json += "\"rssi\":";
+
+  json += String(rssi);
+
+  json += ",";
+
+
+  // Porcentaje
+
+  json += "\"porcentaje\":";
+
+  json += String(porcentaje);
+
+  json += ",";
+
+
+  // Temperatura
+
+  json += "\"temperatura\":";
+
+  json += String(
+    temperatura,
+    1
+  );
+
+
+  json += "}";
+
+
+  server.send(
+    200,
+    "application/json",
+    json
+  );
+
+}
+
+
+
+// ======================================================
+// ESCANEAR REDES WIFI
+// ======================================================
+
+void handleRedes() {
+
+  int redes =
+    WiFi.scanNetworks();
+
+
+  String json = "[";
+
+
+  for (
+    int i = 0;
+    i < redes;
+    i++
+  ) {
+
+    if (i > 0) {
+
+      json += ",";
+
+    }
+
+
+    // Nombre
+
+    String nombre =
+      WiFi.SSID(i);
+
+
+    // RSSI
+
+    int rssi =
+      WiFi.RSSI(i);
+
+
+    // Verificar seguridad
+
+    bool abierta =
+      (
+        WiFi.encryptionType(i)
+        == WIFI_AUTH_OPEN
+      );
+
+
+    json += "{";
+
+
+    // Nombre
+
+    json += "\"nombre\":\"";
+
+    json += nombre;
+
+    json += "\",";
+
+
+    // RSSI
+
+    json += "\"rssi\":";
+
+    json += String(rssi);
+
+    json += ",";
+
+
+    // Pública o privada
+
+    json += "\"abierta\":";
+
+
+    if (abierta) {
+
+      json += "true";
+
+    } else {
+
+      json += "false";
+
+    }
+
+
+    json += "}";
+
+  }
+
+
+  json += "]";
+
+
+  WiFi.scanDelete();
+
+
+  server.send(
+    200,
+    "application/json",
+    json
+  );
+
+}
+
+
+
+// ======================================================
+// CONTROL DEL SERVO
+// ======================================================
+
+void handleServo() {
+
+  if (
+    server.hasArg("angulo")
+  ) {
+
+
+    int angulo =
+      server.arg("angulo").toInt();
+
+
+    // Limitar entre 0 y 180
+
+    angulo =
+      constrain(
+        angulo,
+        0,
+        180
+      );
+
+
+    anguloServo =
+      angulo;
+
+
+    // Mover servo
+
+    miServo.write(
+      anguloServo
+    );
+
+
+    // Mostrar en monitor serial
+
+    Serial.print(
+      "Servo: "
+    );
+
+
+    Serial.print(
+      anguloServo
+    );
+
+
+    Serial.println(
+      " grados"
+    );
+
+
+    server.send(
+      200,
+      "text/plain",
+      "OK"
+    );
+
+  }
+
+  else {
+
+    server.send(
+      400,
+      "text/plain",
+      "Falta el angulo"
+    );
+
+  }
+
+}
+
+
+
+// ======================================================
+// SETUP
+// ======================================================
+
+void setup() {
+
+  Serial.begin(
+    115200
+  );
+
+
+  delay(1000);
+
+
+  // ==================================================
+  // LED
+  // ==================================================
+
+  pinMode(
+    LED_PIN,
+    OUTPUT
+  );
+
+
+  // ==================================================
+  // SERVO
+  // ==================================================
+
+  miServo.attach(
+    SERVO_PIN
+  );
+
+
+  miServo.write(
+    90
+  );
+
+
+  // ==================================================
+  // WIFI
+  // ==================================================
+
+  Serial.println();
+
+  Serial.println(
+    "Conectando a WiFi..."
+  );
+
+
+  WiFi.begin(
+    SSID,
+    PASSWORD
+  );
+
+
+  while (
+    WiFi.status() !=
+    WL_CONNECTED
+  ) {
+
+    delay(500);
+
+    Serial.print(".");
+
+  }
+
+
+  Serial.println();
+
+  Serial.println(
+    "WiFi conectado!"
+  );
+
+
+  // Mostrar SSID
+
+  Serial.print(
+    "Red: "
+  );
+
+  Serial.println(
+    WiFi.SSID()
+  );
+
+
+  // Mostrar IP
+
+  Serial.print(
+    "Dirección IP del ESP32: "
+  );
+
+
+  Serial.println(
+    WiFi.localIP()
+  );
+
+
+  // ==================================================
+  // SERVIDOR WEB
+  // ==================================================
+
+  server.on(
+    "/",
+    handleRoot
+  );
+
+
+  server.on(
+    "/datos",
+    handleDatos
+  );
+
+
+  server.on(
+    "/redes",
+    handleRedes
+  );
+
+
+  server.on(
+    "/servo",
+    handleServo
+  );
+
+
+  server.begin();
+
+
+  Serial.println(
+    "Servidor web iniciado"
+  );
+
+}
+
+
+
+// ======================================================
+// LOOP
+// ======================================================
+
+void loop() {
+
+  server.handleClient();
+
+}
