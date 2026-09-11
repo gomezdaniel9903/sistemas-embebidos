@@ -6,7 +6,7 @@ Primeramente, se observó el tipo de articulaciones del robot asignado, en este 
 
 Primero, para Z1 tenemos un eje vertical ya que la articulación rota horizontalmente. Los demás ejes, como rotan verticalmente, los Z2, Z3 y Z4 quedaron paralelos, horizontales, salientes del dibujo.
 
-Ahora bien, para los ejes Xᵢ, perpendiculares a Zᵢ y Zᵢ₋₁: el primero X1 se visualiza un poco rotado, pero este va hacia la izquierda, perpendicular a Z1 y Z2, de este modo queda positivo el ángulo. Luego tenemos X2, que está sobre el brazo apuntando hacia la derecha para mantener el ángulo positivo, y finalmente X3 nos queda hacia abajo sobre la "garra", también para mantener el ángulo positivo.
+Ahora bien, para los ejes Xᵢ, perpendiculares a Zᵢ y Zᵢ₋₁: el primero X1 se visualiza un poco rotado, pero este va hacia la izquierda, es por mejor visualización del dibujo, perpendicular a Z1 y Z2, de este modo queda positivo el ángulo. Luego tenemos X2, que está sobre el brazo apuntando hacia la derecha para mantener el ángulo positivo, y finalmente X3 nos queda hacia abajo sobre la "garra", también para mantener el ángulo positivo.
 
 Una vez terminado esto, se agregó el sistema de referencia Z0 y X0. Z0 colineal a Z1, y X0 perpendicular a Z1 y Z0, hacia la izquierda por el signo positivo.
 
