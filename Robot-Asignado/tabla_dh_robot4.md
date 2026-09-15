@@ -48,9 +48,9 @@ Como el mBot2 se mueve sobre un plano, su **pose** se describe con tres valores:
 posición `(x, y)` y orientación `θ`. La transformación homogénea en 2D es una
 matriz 3×3:
 
-$$
-T = \begin{bmatrix} \cos\theta & -\sin\theta & x \\ \sin\theta & \cos\theta & y \\ 0 & 0 & 1 \end{bmatrix}
-$$
+        | cos θ   -sin θ   x |
+    T = | sin θ    cos θ   y |
+        |   0        0     1 |
 
 - El bloque 2×2 superior izquierdo es la **rotación** del robot respecto al mundo.
 - La última columna `(x, y)` es la **traslación** (posición del robot).
