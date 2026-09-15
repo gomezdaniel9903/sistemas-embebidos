@@ -36,3 +36,33 @@ De aquí partimos para obtener, con lo visto en clase, la matriz de parámetros 
 - **Fila 4 (J4, muñeca):** Z3 ∥ Z4 ⇒ α₃ = 0; la longitud del antebrazo va a lo largo de X3 ⇒ a₃.
 
 > El sentido positivo elegido para cada Xᵢ (X0 y X1 hacia la izquierda, X2 a la derecha, X3 hacia abajo) fija el signo/offset de cada variable articular, pero no cambia la geometría del robot.
+
+## Transformaciones espaciales
+
+Las **transformaciones homogéneas** son la herramienta estándar en robótica para
+describir a la vez la **posición** y la **orientación** de un cuerpo, combinando
+rotación y traslación en una sola matriz. Su ventaja es que permiten **encadenar
+movimientos** simplemente multiplicando matrices.
+
+Como el mBot2 se mueve sobre un plano, su **pose** se describe con tres valores:
+posición `(x, y)` y orientación `θ`. La transformación homogénea en 2D es una
+matriz 3×3:
+
+$$
+T = \begin{bmatrix} \cos\theta & -\sin\theta & x \\ \sin\theta & \cos\theta & y \\ 0 & 0 & 1 \end{bmatrix}
+$$
+
+- El bloque 2×2 superior izquierdo es la **rotación** del robot respecto al mundo.
+- La última columna `(x, y)` es la **traslación** (posición del robot).
+- La fila `(0, 0, 1)` es la que hace la matriz "homogénea" y unifica rotación y traslación.
+
+Un punto expresado en el sistema de referencia del robot se lleva al sistema del
+mundo multiplicándolo por `T` (en coordenadas homogéneas `[x, y, 1]ᵀ`). Una
+secuencia de movimientos se compone multiplicando sus matrices:
+
+$$ T_{total} = T_1 \cdot T_2 \cdot T_3 \cdots $$
+
+En este proyecto, cada acción del robot (avanzar una distancia, girar un ángulo) se
+puede ver como una transformación que **actualiza su pose** sobre la pista; el modo
+pista corrige continuamente la orientación `θ` para mantener el robot alineado con
+la línea.
