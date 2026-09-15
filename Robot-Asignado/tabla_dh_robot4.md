@@ -37,32 +37,49 @@ De aquí partimos para obtener, con lo visto en clase, la matriz de parámetros 
 
 > El sentido positivo elegido para cada Xᵢ (X0 y X1 hacia la izquierda, X2 a la derecha, X3 hacia abajo) fija el signo/offset de cada variable articular, pero no cambia la geometría del robot.
 
-## Transformaciones espaciales
+## Transformaciones espaciales (transformaciones homogéneas)
 
-Las **transformaciones homogéneas** son la herramienta estándar en robótica para
-describir a la vez la **posición** y la **orientación** de un cuerpo, combinando
-rotación y traslación en una sola matriz. Su ventaja es que permiten **encadenar
-movimientos** simplemente multiplicando matrices.
+En robótica, una **transformación homogénea** es una matriz de **4×4** que describe, con un solo objeto, la **posición** *y* la **orientación** de un sistema de referencia respecto a otro. Su ventaja es que permite **encadenar** varios movimientos (una articulación tras otra) simplemente **multiplicando matrices**, lo cual es la base del método de Denavit-Hartenberg.
 
-Como el mBot2 se mueve sobre un plano, su **pose** se describe con tres valores:
-posición `(x, y)` y orientación `θ`. La transformación homogénea en 2D es una
-matriz 3×3:
+### Coordenadas homogéneas
 
-        | cos θ   -sin θ   x |
-    T = | sin θ    cos θ   y |
-        |   0        0     1 |
+Un punto del espacio (x, y, z) se escribe agregándole un 1:
 
-- El bloque 2×2 superior izquierdo es la **rotación** del robot respecto al mundo.
-- La última columna `(x, y)` es la **traslación** (posición del robot).
-- La fila `(0, 0, 1)` es la que hace la matriz "homogénea" y unifica rotación y traslación.
+    p = [x, y, z, 1]ᵀ
 
-Un punto expresado en el sistema de referencia del robot se lleva al sistema del
-mundo multiplicándolo por `T` (en coordenadas homogéneas `[x, y, 1]ᵀ`). Una
-secuencia de movimientos se compone multiplicando sus matrices:
+Ese "1" extra es lo que permite incluir la **traslación** dentro de una multiplicación de matrices: una rotación por sí sola no puede trasladar, pero en coordenadas homogéneas rotación y traslación se combinan en una sola operación.
 
-$$ T_{total} = T_1 \cdot T_2 \cdot T_3 \cdots $$
+### Estructura de la matriz
 
-En este proyecto, cada acción del robot (avanzar una distancia, girar un ángulo) se
-puede ver como una transformación que **actualiza su pose** sobre la pista; el modo
-pista corrige continuamente la orientación `θ` para mantener el robot alineado con
-la línea.
+Una transformación homogénea junta una rotación y una traslación:
+
+    T = | R   p |        R = rotación (3×3, la orientación)
+        | 0   1 |        p = traslación (3×1, la posición del origen)
+
+En forma completa:
+
+    | r11  r12  r13  px |
+    | r21  r22  r23  py |
+    | r31  r32  r33  pz |
+    |  0    0    0    1 |
+
+Al aplicarla a un punto, **p′ = T · p**, el punto queda rotado y trasladado del sistema de origen al de destino.
+
+### Composición (por qué son útiles)
+
+Si `⁰T₁` lleva del sistema 0 al 1, y `¹T₂` del 1 al 2, entonces del 0 al 2:
+
+    ⁰T₂ = ⁰T₁ · ¹T₂
+
+Encadenando así **todas** las articulaciones se obtiene la **cinemática directa**:
+
+    ⁰Tₙ = ⁰T₁ · ¹T₂ · … · ⁿ⁻¹Tₙ
+
+La **posición del efector final** es la columna de traslación (p) de `⁰Tₙ`, y su **orientación** es la submatriz R.
+
+### Relación con Denavit-Hartenberg
+
+Cada fila de la tabla DH define una transformación homogénea entre dos sistemas consecutivos (mediante la matriz DH). Al multiplicar esas matrices en orden se obtiene la pose del efector final — que es exactamente lo que calcula el código de cinemática directa.
+
+> **Dato útil:** la inversa de una transformación homogénea (que "deshace" el movimiento) es
+> `T⁻¹ = | Rᵀ  −Rᵀp ; 0  1 |`, sin necesidad de invertir la matriz completa de 4×4.
